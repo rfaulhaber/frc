@@ -1,10 +1,11 @@
-use std::{
-    fmt::Display,
-    time::{Duration, SystemTime},
-};
+// see: https://github.com/quantum5/qcal/blob/master/common/src/french/index.ts
 
+use std::fmt::Display;
+
+use numeral::to_numeral;
 use thiserror::Error;
 
+mod cal;
 pub(crate) mod numeral;
 
 #[derive(Debug, Error)]
@@ -23,11 +24,6 @@ pub enum DateError {
 }
 
 pub type DateResult = Result<Date, DateError>;
-
-// TODO
-const DAYS_PER_400_YEARS: u32 = 365 * 400 + 97;
-const DAYS_PER_100_YEARS: u32 = 365 * 100 + 24;
-const DAYS_PER_4_YEARS: u32 = 365 * 4 + 1;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Month {
@@ -146,47 +142,119 @@ impl Month {
 }
 
 pub enum Weekday {
-    Primidi,
-    Duodi,
-    Tridi,
-    Quartidi,
-    Quintidi,
-    Sextidi,
-    Septidi,
-    Octidi,
-    Nonidi,
-    Décadi,
+    Complimentary(ComplimentaryWeekday),
+    Ordinary(OrdinaryWeekday),
 }
 
-impl Display for Weekday {
+pub enum ComplimentaryWeekday {
+    Vertu = 1,
+    Génie = 2,
+    Travail = 3,
+    #[allow(non_camel_case_types)]
+    lOpinion = 4,
+    Récompenses = 5,
+    Révolution = 6,
+}
+
+impl Display for ComplimentaryWeekday {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
             "{}",
             match self {
-                Weekday::Primidi => "Primidi",
-                Weekday::Duodi => "Duodi",
-                Weekday::Tridi => "Tridi",
-                Weekday::Quartidi => "Quartidi",
-                Weekday::Quintidi => "Quintidi",
-                Weekday::Sextidi => "Sextidi",
-                Weekday::Septidi => "Septidi",
-                Weekday::Octidi => "Octidi",
-                Weekday::Nonidi => "Nonidi",
-                Weekday::Décadi => "Décadi",
+                ComplimentaryWeekday::Vertu => "La Fête de la Vertu",
+                ComplimentaryWeekday::Génie => "La Fête du Génie",
+                ComplimentaryWeekday::Travail => "La Fête du Travail",
+                ComplimentaryWeekday::lOpinion => "La Fête de l'Opinion",
+                ComplimentaryWeekday::Récompenses => "La Fête des Récompenses",
+                ComplimentaryWeekday::Révolution => "La Fête de la Révolution",
             }
         )
     }
 }
 
+impl ComplimentaryWeekday {
+    fn day_of_week(n: i32) -> ComplimentaryWeekday {
+        match n {
+            1 => ComplimentaryWeekday::Vertu,
+            2 => ComplimentaryWeekday::Génie,
+            3 => ComplimentaryWeekday::Travail,
+            4 => ComplimentaryWeekday::lOpinion,
+            5 => ComplimentaryWeekday::Récompenses,
+            6 => ComplimentaryWeekday::Révolution,
+            _ => unreachable!("invalid value passed to day of week"),
+        }
+    }
+}
+
+pub enum OrdinaryWeekday {
+    Primidi = 1,
+    Duodi = 2,
+    Tridi = 3,
+    Quartidi = 4,
+    Quintidi = 5,
+    Sextidi = 6,
+    Septidi = 7,
+    Octidi = 8,
+    Nonidi = 9,
+    Décadi = 10,
+}
+
+impl Display for OrdinaryWeekday {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                OrdinaryWeekday::Primidi => "Primidi",
+                OrdinaryWeekday::Duodi => "Duodi",
+                OrdinaryWeekday::Tridi => "Tridi",
+                OrdinaryWeekday::Quartidi => "Quartidi",
+                OrdinaryWeekday::Quintidi => "Quintidi",
+                OrdinaryWeekday::Sextidi => "Sextidi",
+                OrdinaryWeekday::Septidi => "Septidi",
+                OrdinaryWeekday::Octidi => "Octidi",
+                OrdinaryWeekday::Nonidi => "Nonidi",
+                OrdinaryWeekday::Décadi => "Décadi",
+            }
+        )
+    }
+}
+
+impl OrdinaryWeekday {
+    fn day_of_week(n: i32) -> OrdinaryWeekday {
+        match n {
+            1 => OrdinaryWeekday::Primidi,
+            2 => OrdinaryWeekday::Duodi,
+            3 => OrdinaryWeekday::Tridi,
+            4 => OrdinaryWeekday::Quartidi,
+            5 => OrdinaryWeekday::Quintidi,
+            6 => OrdinaryWeekday::Sextidi,
+            7 => OrdinaryWeekday::Septidi,
+            8 => OrdinaryWeekday::Octidi,
+            9 => OrdinaryWeekday::Nonidi,
+            10 => OrdinaryWeekday::Décadi,
+            _ => unreachable!("invalid value passed {:?}", n),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Date {
-    days: u32,
+    year: i32,
+    month: u8,
+    day: u8,
 }
 
 impl Display for Date {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        todo!()
+        let year = if self.year < 0 || self.year > (numeral::MAX_NUMERAL_VALUE as i32) {
+            format!("{}", self.year)
+        } else {
+            format!("{}", to_numeral(self.year as u16).unwrap())
+        };
+
+        write!(f, "{} {} An {}", self.day, self.month, year)
     }
 }
 
@@ -228,21 +296,31 @@ impl Date {
     }
 
     pub fn day(&self) -> u16 {
-        self.year_month_day().2
+        self.year_month_day().2 as u16
     }
 
     pub fn weekday(&self) -> Weekday {
-        todo!()
+        let (_, month, day) = self.year_month_day();
+
+        if month == Month::Complémentaires {
+            Weekday::Complimentary(ComplimentaryWeekday::day_of_week(day))
+        } else {
+            Weekday::Ordinary(OrdinaryWeekday::day_of_week(day % 11))
+        }
     }
 
     pub fn year(&self) -> u8 {
-        self.year_month_day().0
+        self.year_month_day().0 as u8
+    }
+
+    pub fn is_leap_year(&self) -> bool {
+        let (year, _, _) = self.year_month_day();
+        Date::is_int_leap_year(year)
     }
 
     fn from_gregorian(date: time::Date) -> Self {
         let epoch = epoch_gregorian();
 
-        let debug = date - epoch;
         let days_since = (date - epoch).whole_days();
 
         Self {
@@ -250,41 +328,61 @@ impl Date {
         }
     }
 
-    fn year_month_day(&self) -> (u8, Month, u16) {
+    fn year_month_day(&self) -> (i32, Month, i32) {
         let mut days = self.days;
-        let mut years = 0;
+        let mut years = 1;
 
-        let mut years400 = days / DAYS_PER_400_YEARS;
-        years400 -= years400 >> 2;
-        years += years400 * 400;
-        days -= DAYS_PER_400_YEARS * years400;
+        let days_400_years = days / DAYS_PER_400_YEARS;
+        days -= DAYS_PER_400_YEARS * days_400_years;
+        years += days_400_years * 400;
 
-        let mut years100 = days / DAYS_PER_100_YEARS;
-        years100 -= years100 >> 2;
-        years += years100 * 100;
-        days -= DAYS_PER_100_YEARS * years100;
+        let mut days_100_years = days / DAYS_PER_100_YEARS;
+        days_100_years -= days_100_years >> 2;
+        days -= DAYS_PER_100_YEARS * days_100_years;
+        years += days_100_years * 100;
 
-        let leap_years = days / DAYS_PER_4_YEARS;
-        years += leap_years * 4;
-        days -= DAYS_PER_4_YEARS * leap_years;
+        let days_4_years = days / DAYS_PER_4_YEARS;
+        days -= DAYS_PER_4_YEARS * days_4_years;
+        years += days_4_years * 4;
 
-        let mut y = days / 365;
-        y -= y >> 2;
-        years += y * 365;
-        days -= 365 * y;
+        let mut remaining_years = days / 365;
+        remaining_years -= remaining_years >> 2;
+        days -= remaining_years * 365;
+        years += remaining_years;
 
-        years += 1;
+        let mut months = days / 30;
 
-        let n_months = days / 30;
-        let date = days - (n_months * 30) + 1;
+        if days > 360 {
+            days = days - 360 + 1;
+        } else {
+            let end = 30 * (months + 1);
 
-        let month = Month::nth((n_months + 1) as u8);
+            let mut begin = end;
 
-        (years as u8, month, date as u16)
+            if days >= end {
+                months += 1;
+            } else {
+                begin = 30 * months;
+            }
+
+            days = days - begin + 1;
+        }
+
+        let month = Month::nth(
+            (months + 1)
+                .try_into()
+                .expect("months value is larger than expected"),
+        );
+
+        (
+            years.try_into().expect("years is larger than expected"),
+            month,
+            days.try_into().expect("days is larger than expected"),
+        )
     }
 
-    fn is_leap_year(year: u16) -> bool {
-        todo!();
+    const fn is_int_leap_year(year: i32) -> bool {
+        (year % 4 == 0) && ((year % 100 != 0) || (year % 400 == 0))
     }
 }
 
@@ -304,8 +402,8 @@ mod tests {
                 Date { days: 0 },
             ),
             (
-                time::Date::from_calendar_date(1795, time::Month::November, 22).unwrap(),
-                Date { days: 2604 },
+                time::Date::from_calendar_date(2024, time::Month::November, 7).unwrap(),
+                Date { days: 84782 },
             ),
         ];
 
@@ -318,13 +416,25 @@ mod tests {
     fn dates() {
         let tests = &[
             (Date { days: 0 }, (1, Month::Vendémiaire, 1)),
-            (Date { days: 2604 }, (8, Month::Brumaire, 18)),
+            (Date { days: 1 }, (1, Month::Vendémiaire, 2)),
+            (Date { days: 2603 }, (8, Month::Brumaire, 18)),
+            (Date { days: 673 }, (2, Month::Thermidor, 9)),
+            (Date { days: 82215 }, (226, Month::Brumaire, 7)),
+            (Date { days: 81850 }, (225, Month::Brumaire, 7)),
+            (Date { days: 82580 }, (227, Month::Brumaire, 7)),
+            (Date { days: 84782 }, (233, Month::Brumaire, 17)),
+            // (Date { days: 81808 }, (224, Month::Fructidor, 30)),
+            (Date { days: 81810 }, (224, Month::Complémentaires, 2)),
+            (Date { days: 81813 }, (224, Month::Complémentaires, 5)),
         ];
 
-        for &(date, (year, month, day)) in tests {
-            assert_eq!(date.year(), year);
-            assert_eq!(date.month(), month);
-            assert_eq!(date.day(), day);
+        for &(date, expected) in tests {
+            let year = date.year();
+            let month = date.month();
+            let day = date.day();
+
+            let actual = (year, month, day);
+            assert_eq!(actual, expected, "Mismatch for date {:?}", date);
         }
     }
 }
