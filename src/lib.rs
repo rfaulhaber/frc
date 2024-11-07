@@ -1,6 +1,6 @@
 // see: https://github.com/quantum5/qcal/blob/master/common/src/french/index.ts
 
-use std::fmt::Display;
+use std::{cell::OnceCell, fmt::Display};
 
 use numeral::to_numeral;
 use thiserror::Error;
@@ -260,129 +260,35 @@ impl Display for Date {
 
 impl Date {
     pub fn today_utc() -> Date {
-        let now = time::OffsetDateTime::now_utc();
-        Date::from_gregorian(now.date())
+        todo!()
     }
 
     pub fn today_local() -> DateResult {
-        let now = time::OffsetDateTime::now_local()?;
-        Ok(Date::from_gregorian(now.date()))
+        todo!()
     }
 
-    pub fn from_gregorian_calendar_date(year: u8, month: u8, day: u8) -> DateResult {
-        let time_month = match month {
-            1 => time::Month::January,
-            2 => time::Month::February,
-            3 => time::Month::March,
-            4 => time::Month::April,
-            5 => time::Month::May,
-            6 => time::Month::June,
-            7 => time::Month::July,
-            8 => time::Month::August,
-            9 => time::Month::September,
-            10 => time::Month::October,
-            11 => time::Month::November,
-            12 => time::Month::December,
-            _ => return Err(DateError::InvalidGeorgianCalendarDate),
-        };
+    fn from_julian_day(day: i32) -> Self {
+        let mut low = 0;
+        let mut high = cal::LEAP_YEARS.len();
 
-        let date = time::Date::from_calendar_date(year as i32, time_month, day)?;
+        let leaps_to_date = cal::leaps_to_date();
 
-        Ok(Date::from_gregorian(date))
-    }
-
-    pub fn month(&self) -> Month {
-        self.year_month_day().1
-    }
-
-    pub fn day(&self) -> u16 {
-        self.year_month_day().2 as u16
-    }
-
-    pub fn weekday(&self) -> Weekday {
-        let (_, month, day) = self.year_month_day();
-
-        if month == Month::Complémentaires {
-            Weekday::Complimentary(ComplimentaryWeekday::day_of_week(day))
-        } else {
-            Weekday::Ordinary(OrdinaryWeekday::day_of_week(day % 11))
+        while low + 1 < high {
+            let mid = ((low + high) / 2) as i32;
+            if cal::START_JD + 365 * mid + (leaps_to_date[mid as usize] as i32) <= day {
+                low = mid as usize;
+            } else {
+                high = mid as usize;
+            }
         }
-    }
 
-    pub fn year(&self) -> u8 {
-        self.year_month_day().0 as u8
-    }
-
-    pub fn is_leap_year(&self) -> bool {
-        let (year, _, _) = self.year_month_day();
-        Date::is_int_leap_year(year)
-    }
-
-    fn from_gregorian(date: time::Date) -> Self {
-        let epoch = epoch_gregorian();
-
-        let days_since = (date - epoch).whole_days();
+        let dd = day - (cal::START_JD + 365 * low + leaps_to_date[low])
 
         Self {
-            days: days_since as u32,
+            year: cal::START_YEAR + (low as i32),
+            month: (dd / 30 + 1) as u8,
+            day: (dd % 30 + 1) as u8,
         }
-    }
-
-    fn year_month_day(&self) -> (i32, Month, i32) {
-        let mut days = self.days;
-        let mut years = 1;
-
-        let days_400_years = days / DAYS_PER_400_YEARS;
-        days -= DAYS_PER_400_YEARS * days_400_years;
-        years += days_400_years * 400;
-
-        let mut days_100_years = days / DAYS_PER_100_YEARS;
-        days_100_years -= days_100_years >> 2;
-        days -= DAYS_PER_100_YEARS * days_100_years;
-        years += days_100_years * 100;
-
-        let days_4_years = days / DAYS_PER_4_YEARS;
-        days -= DAYS_PER_4_YEARS * days_4_years;
-        years += days_4_years * 4;
-
-        let mut remaining_years = days / 365;
-        remaining_years -= remaining_years >> 2;
-        days -= remaining_years * 365;
-        years += remaining_years;
-
-        let mut months = days / 30;
-
-        if days > 360 {
-            days = days - 360 + 1;
-        } else {
-            let end = 30 * (months + 1);
-
-            let mut begin = end;
-
-            if days >= end {
-                months += 1;
-            } else {
-                begin = 30 * months;
-            }
-
-            days = days - begin + 1;
-        }
-
-        let month = Month::nth(
-            (months + 1)
-                .try_into()
-                .expect("months value is larger than expected"),
-        );
-
-        (
-            years.try_into().expect("years is larger than expected"),
-            month,
-            days.try_into().expect("days is larger than expected"),
-        )
-    }
-
-    const fn is_int_leap_year(year: i32) -> bool {
-        (year % 4 == 0) && ((year % 100 != 0) || (year % 400 == 0))
     }
 }
 

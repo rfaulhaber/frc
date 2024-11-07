@@ -1316,3 +1316,16 @@ pub const RURAL_DAYS: [(&'static str, &'static str); 360] = [
     ("Marron", "Sweet Chestnut"),
     ("Panier", "Pack Basket"),
 ];
+
+pub fn leaps_to_date() -> [u8; 30390] {
+    let mut leaps_to_date = 0;
+
+    let mut years = Vec::new();
+
+    for year in LEAP_YEARS {
+        leaps_to_date += year;
+        years.push(leaps_to_date)
+    }
+
+    years.as_slice().try_into().unwrap()
+}
