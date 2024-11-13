@@ -1,11 +1,30 @@
 use std::fmt::Display;
 
+use thiserror::Error;
+
 use crate::{
     cal,
     month::Month,
     numeral,
     weekday::{Complimentary, Ordinary, Weekday},
 };
+
+pub type DateResult<D> = Result<D, DateError>;
+
+#[derive(Debug, Error)]
+pub enum DateError {
+    #[error("Parameters passed create an invalid FRC date")]
+    InvalidDate,
+
+    #[error("Invalid Georgian calendar date provided")]
+    InvalidGeorgianCalendarDate,
+
+    #[error("Cannot determine time zone")]
+    IndeterminateTimezone(#[from] time::error::IndeterminateOffset),
+
+    #[error("Specified parameter was out of range")]
+    ComponentRange(#[from] time::error::ComponentRange),
+}
 
 pub trait FrcDate {
     fn month_int(&self) -> u8;
@@ -26,8 +45,10 @@ pub trait FrcDate {
         Month::nth(self.month_int())
     }
 
-    fn day_of_year(&self) -> u8 {
-        (self.month_int() - 1) * 30 + self.day()
+    fn day_of_year(&self) -> u16 {
+        let month_int: u16 = self.month_int().into();
+        let days_of_months = (month_int - 1) * 30;
+        days_of_months + self.day() as u16
     }
 
     fn rural_day(&self) -> Option<(&str, &str)> {

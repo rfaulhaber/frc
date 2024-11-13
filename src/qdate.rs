@@ -1,26 +1,12 @@
 use std::fmt::Display;
-use thiserror::Error;
 
-use crate::{cal, date::FrcDate, numeral};
-
-pub type DateResult = Result<QDate, DateError>;
+use crate::{
+    cal,
+    date::{DateResult, FrcDate},
+    numeral,
+};
 
 type JDN = i32;
-
-#[derive(Debug, Error)]
-pub enum DateError {
-    #[error("Parameters passed create an invalid FRC date")]
-    InvalidDate,
-
-    #[error("Invalid Georgian calendar date provided")]
-    InvalidGeorgianCalendarDate,
-
-    #[error("Cannot determine time zone")]
-    IndeterminateTimezone(#[from] time::error::IndeterminateOffset),
-
-    #[error("Specified parameter was out of range")]
-    ComponentRange(#[from] time::error::ComponentRange),
-}
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct QDate {
@@ -69,7 +55,7 @@ impl QDate {
         QDate::new(jdn)
     }
 
-    pub fn today_local() -> DateResult {
+    pub fn today_local() -> DateResult<Self> {
         let today = time::OffsetDateTime::now_local()?;
 
         let jdn = today.to_julian_day();
@@ -77,7 +63,7 @@ impl QDate {
         Ok(QDate::new(jdn))
     }
 
-    pub fn from_gregorian_date(year: i32, month: u8, day: u8) -> DateResult {
+    pub fn from_gregorian_date(year: i32, month: u8, day: u8) -> DateResult<Self> {
         let month = match month {
             1 => time::Month::January,
             2 => time::Month::February,
@@ -91,7 +77,7 @@ impl QDate {
             10 => time::Month::October,
             11 => time::Month::November,
             12 => time::Month::December,
-            _ => return Err(DateError::InvalidDate),
+            _ => return Err(crate::date::DateError::InvalidDate),
         };
 
         let date = time::Date::from_calendar_date(year, month as time::Month, day)?;
@@ -220,6 +206,24 @@ mod tests {
                 year, res, is_leap
             );
         }
+    }
+
+    #[test]
+    fn constructs_end_of_year_correctly() {
+        let leap_year_date = QDate::from_gregorian_date(1795, 9, 22).unwrap();
+
+        assert_eq!(leap_year_date.month(), Month::Complémentaires);
+        assert_eq!(leap_year_date.year(), 3);
+        assert_eq!(leap_year_date.day(), 6);
+        assert_eq!(leap_year_date.day_of_year(), 366);
+        assert!(leap_year_date.is_leap_year());
+
+        let regular_date = QDate::from_gregorian_date(1793, 9, 21).unwrap();
+        assert_eq!(regular_date.month(), Month::Complémentaires);
+        assert_eq!(regular_date.year(), 1);
+        assert_eq!(regular_date.day(), 5);
+        assert_eq!(regular_date.day_of_year(), 365);
+        assert!(!regular_date.is_leap_year());
     }
 
     #[test]

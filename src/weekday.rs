@@ -68,16 +68,16 @@ impl Display for Ordinary {
             f,
             "{}",
             match self {
-                Ordinary::Primidi => "Primidi",
-                Ordinary::Duodi => "Duodi",
-                Ordinary::Tridi => "Tridi",
-                Ordinary::Quartidi => "Quartidi",
-                Ordinary::Quintidi => "Quintidi",
-                Ordinary::Sextidi => "Sextidi",
-                Ordinary::Septidi => "Septidi",
-                Ordinary::Octidi => "Octidi",
-                Ordinary::Nonidi => "Nonidi",
-                Ordinary::Décadi => "Décadi",
+                Ordinary::Primidi => "primidi",
+                Ordinary::Duodi => "duodi",
+                Ordinary::Tridi => "tridi",
+                Ordinary::Quartidi => "quartidi",
+                Ordinary::Quintidi => "quintidi",
+                Ordinary::Sextidi => "sextidi",
+                Ordinary::Septidi => "septidi",
+                Ordinary::Octidi => "octidi",
+                Ordinary::Nonidi => "nonidi",
+                Ordinary::Décadi => "décadi",
             }
         )
     }
