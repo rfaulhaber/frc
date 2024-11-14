@@ -10,7 +10,7 @@
     nixpkgs,
   }: let
     projectName = "fdate-rs";
-    supportedSystems = ["x86_64-linux"];
+    supportedSystems = ["x86_64-linux" "aarch64-darwin"];
     forSystems = systems: f:
       nixpkgs.lib.genAttrs systems
       (system: f system (import nixpkgs {inherit system;}));
