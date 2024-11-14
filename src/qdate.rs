@@ -90,7 +90,7 @@ impl QDate {
         self.jdn
     }
 
-    fn new(jdn: i32) -> Self {
+    fn new(jdn: JDN) -> Self {
         let (year, month, day) = QDate::from_julian_day(jdn);
 
         Self {

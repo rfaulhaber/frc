@@ -1,5 +1,4 @@
-use crate::{date::FrcDate, month::Month};
-use thiserror::Error;
+use crate::date::{DateError, FrcDate};
 
 const DAYS_PER_400_YEARS: i32 = 365 * 400 + 97;
 const DAYS_PER_100_YEARS: i32 = 365 * 100 + 24;
@@ -7,13 +6,12 @@ const DAYS_PER_4_YEARS: i32 = 365 * 4 + 1;
 
 pub type DateResult = Result<RommeDate, DateError>;
 
-#[derive(Debug, Clone, Error)]
-pub enum DateError {}
+type RommeDelta = i32;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 /// Represents an FRC date that adheres to the Romme Rule
 pub struct RommeDate {
-    days: i32,
+    days: RommeDelta,
     year: i32,
     month: u8,
     day: u8,
@@ -41,18 +39,47 @@ impl FrcDate for RommeDate {
 
 impl RommeDate {
     pub fn today_local() -> DateResult {
-        todo!()
+        let today = time::OffsetDateTime::now_local()?;
+
+        let delta = (today.date() - RommeDate::epoch()).whole_days();
+
+        Ok(RommeDate::new(delta.try_into().unwrap()))
     }
 
     pub fn today_utc() -> Self {
-        todo!()
+        let today = time::OffsetDateTime::now_utc();
+
+        let delta = (today.date() - RommeDate::epoch()).whole_days();
+
+        RommeDate::new(delta.try_into().unwrap())
     }
 
     pub fn from_georgian_date(year: i32, month: u8, day: u8) -> DateResult {
-        todo!()
+        let month = match month {
+            1 => time::Month::January,
+            2 => time::Month::February,
+            3 => time::Month::March,
+            4 => time::Month::April,
+            5 => time::Month::May,
+            6 => time::Month::June,
+            7 => time::Month::July,
+            8 => time::Month::August,
+            9 => time::Month::September,
+            10 => time::Month::October,
+            11 => time::Month::November,
+            12 => time::Month::December,
+            _ => return Err(crate::date::DateError::InvalidDate),
+        };
+
+        let date = time::Date::from_calendar_date(year, month as time::Month, day)?;
+
+        // TODO deal with i64 type properly
+        let delta = (date - RommeDate::epoch()).whole_days();
+
+        Ok(RommeDate::new(delta.try_into().unwrap()))
     }
 
-    fn new(days: i32) -> Self {
+    fn new(days: RommeDelta) -> Self {
         let (year, month, day) = RommeDate::from_days(days);
 
         Self {
@@ -63,7 +90,7 @@ impl RommeDate {
         }
     }
 
-    fn from_days(days: i32) -> (i32, u8, u8) {
+    fn from_days(days: RommeDelta) -> (i32, u8, u8) {
         let mut days = days;
         let mut years = 0;
 
@@ -107,7 +134,12 @@ impl RommeDate {
             days = days - begin + 1;
         }
 
-        (years, month.try_into().unwrap(), days.try_into().unwrap())
+        // TODO remove unwrap
+        (
+            years.try_into().unwrap(),
+            month.try_into().unwrap(),
+            days.try_into().unwrap(),
+        )
     }
 
     fn epoch() -> time::Date {
