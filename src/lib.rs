@@ -3,12 +3,12 @@
 mod cal;
 mod date;
 mod qdate;
-mod rdate;
+mod romme_date;
 
-pub mod weekday;
 pub mod month;
 pub(crate) mod numeral;
+pub mod weekday;
 
 pub use date::Date;
 pub use qdate::QDate;
-pub use rdate::RommeDate;
+pub use romme_date::RommeDate;

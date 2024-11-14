@@ -14,26 +14,28 @@ pub enum DateError {}
 /// Represents an FRC date that adheres to the Romme Rule
 pub struct RommeDate {
     days: i32,
-    year: u32,
+    year: i32,
     month: u8,
     day: u8,
 }
 
 impl FrcDate for RommeDate {
     fn month_int(&self) -> u8 {
-        todo!()
+        self.month
     }
 
     fn day(&self) -> u8 {
-        todo!()
+        self.day
     }
 
     fn year(&self) -> i32 {
-        todo!()
+        self.year
+            .try_into()
+            .expect("Cannot convert this year into an i32")
     }
 
     fn is_leap_year(&self) -> bool {
-        todo!()
+        self.year % 4 == 0 && (self.year % 100 != 0 || self.year % 400 == 0)
     }
 }
 
@@ -51,7 +53,14 @@ impl RommeDate {
     }
 
     fn new(days: i32) -> Self {
-        todo!()
+        let (year, month, day) = RommeDate::from_days(days);
+
+        Self {
+            days,
+            year,
+            month,
+            day,
+        }
     }
 
     fn from_days(days: i32) -> (i32, u8, u8) {
@@ -120,16 +129,24 @@ mod tests {
             (81850, (225, 2, 7)),
             (82215, (226, 2, 7)),
             (82580, (227, 2, 7)),
+            // these next two values differ from my original implementation:
+            // https://github.com/rfaulhaber/fdate/blob/a83c6305b69144f2a5d3b0671302adc8dda3bc93/fdate_test.go#L202-L213
+            // I'm not sure what the difference is exactly, but these values seem to be correct when cross-referenced with other tools that use the same method
             (81813, (224, 13, 6)),
             (81810, (224, 13, 3)),
             (82178, (225, 13, 5)),
             (82179, (226, 1, 1)),
+            (84789, (233, 2, 24)),
         ];
 
         for (days, expected) in dates {
             let result = RommeDate::from_days(days);
 
-            assert_eq!(result, expected);
+            assert_eq!(
+                result, expected,
+                "Expected {:?} for {:?} days but got {:?}",
+                expected, days, result
+            );
         }
     }
 }
