@@ -1,5 +1,5 @@
 {
-  description = "fdate-rs";
+  description = "frc";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-unstable";
@@ -9,7 +9,7 @@
     self,
     nixpkgs,
   }: let
-    projectName = "fdate-rs";
+    projectName = "frc";
     supportedSystems = ["x86_64-linux" "aarch64-darwin"];
     forSystems = systems: f:
       nixpkgs.lib.genAttrs systems
@@ -17,13 +17,13 @@
     forAllSystems = forSystems supportedSystems;
   in {
     packages = forAllSystems (system: pkgs: {
-      packages.${projectName} = pkgs.rustPlatform.buildRustPackage {
+      ${projectName} = pkgs.rustPlatform.buildRustPackage {
         pname = projectName;
         version = "0.1.0";
         src = ./.;
         cargoLock.lockFile = ./Cargo.lock;
       };
-      default = self.packages.${system}.projectName;
+      default = self.packages.${system}.${projectName};
     });
 
     formatter = forAllSystems (system: pkgs: pkgs.alejandra);

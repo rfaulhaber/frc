@@ -73,3 +73,21 @@ impl<D: FrcDate> Display for Date<D> {
         write!(f, "{} {} An {}", self.date.day(), self.date.month(), year)
     }
 }
+
+impl<D: FrcDate> Date<D> {
+    pub fn year_as_numeral(&self) -> Option<String> {
+        let year = self.date.year();
+
+        if year < 0 {
+            None
+        } else {
+            let year = year.try_into();
+
+            if year.is_err() {
+                None
+            } else {
+                numeral::to_numeral(year.unwrap())
+            }
+        }
+    }
+}
